@@ -13,23 +13,25 @@ def accept_connections():
 
 def handle_client(client):
     name = client.recv(BUFSIZ).decode("utf8")
-    print(name)
+    names.append(name)
     welcome = 'Welcome %s! If you ever want to quit, type .exit to exit.' % name
     client.send(bytes(welcome, "utf8"))
     msg = "%s has joined the chat!" % name
     broadcast(bytes(msg, "utf8"))
-    msg = "1%s" % name
-    broadcast(bytes(msg, "utf8"))
     clients[client] = name
+    user_list = pickle.dumps(names)
+    broadcast(user_list)
 
     while True:
         msg = client.recv(BUFSIZ)
         if msg != bytes(".exit", "utf8"):
             broadcast(msg, name+": ")
         else:
-            client.send(bytes(".exit", "utf8"))
             client.close()
+            names.remove(clients[client])   
+            user_list = pickle.dumps(names)
             del clients[client]
+            broadcast(user_list)
             broadcast(bytes("%s has left the chat." % name, "utf8"))
             break
 
@@ -43,10 +45,11 @@ def broadcast(msg, prefix=""):
 
 clients = {}
 addresses = {}
+names = []
 
 HOST = ''
 PORT = 33000
-BUFSIZ = 1024
+BUFSIZ = 4096
 ADDR = (HOST, PORT)
 
 SERVER = socket(AF_INET, SOCK_STREAM)

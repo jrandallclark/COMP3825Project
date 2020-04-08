@@ -2,20 +2,21 @@
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 import tkinter
-import json
+import pickle
 
 def receive():
     while True:
         try:
-            msg = client_socket.recv(BUFSIZ).decode("utf8")
-            print(msg)
-            print(msg[0])
-            if (msg[0] == '1'):
-                names.append(msg[1:])
-                print(names)
-                users.insert(tkinter.END, msg[1:])
-            else:
-                msg_list.insert(tkinter.END, msg)
+            msg = client_socket.recv(BUFSIZ)
+            chat_message = msg.decode("utf8")
+            msg_list.insert(tkinter.END, chat_message)
+        except UnicodeDecodeError:
+            online_users = pickle.loads(msg)
+            users.delete(0, tkinter.END)
+            for x in online_users:
+                users.insert(tkinter.END, x)
+            
+                
         except OSError:
             break
 
@@ -64,7 +65,7 @@ PORT = 33000
 names = []
 
 
-BUFSIZ = 1024
+BUFSIZ = 4096
 ADDR = (HOST, PORT)
 
 client_socket = socket(AF_INET, SOCK_STREAM)

@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
-import tkinter
-import pickle
+import tkinter, ssl, pickle
 
 def receive():
     while True:
         try:
-            msg = client_socket.recv(BUFSIZ)
+            msg = conn.recv(BUFSIZ)
             chat_message = msg.decode("utf8")
             msg_list.insert(tkinter.END, chat_message)
         except UnicodeDecodeError:
@@ -23,9 +22,9 @@ def receive():
 def send(event=None):
     msg = my_msg.get()
     my_msg.set("")
-    client_socket.send(bytes(msg, "utf8"))
+    conn.send(bytes(msg, "utf8"))
     if msg == ".exit":
-        client_socket.close()
+        conn.close()
         top.quit()
 
 def on_closing(event=None):
@@ -60,16 +59,22 @@ send_button.grid(row=1, column=1)
 
 top.protocol("WM_DELETE_WINDOW", on_closing)
 
-HOST = '127.0.0.1'
-PORT = 33000
+ADDR = '127.0.0.1'
+PORT = 8083
+HOSTNAME = 'localhost'
+SERVER_CERT = 'server.pem'
+AUTH = 'client.pem'
 names = []
 
 
 BUFSIZ = 4096
-ADDR = (HOST, PORT)
+ADDR = ((ADDR, PORT))
 
-client_socket = socket(AF_INET, SOCK_STREAM)
-client_socket.connect(ADDR)
+socket = socket(AF_INET, SOCK_STREAM)
+context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=SERVER_CERT)
+context.load_cert_chain(certfile=AUTH, keyfile=AUTH)
+conn = context.wrap_socket(socket, server_side=False, server_hostname=HOSTNAME)
+conn.connect(ADDR)
 
 receive_thread = Thread(target=receive)
 receive_thread.start()

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
-import pickle
+import ssl, pickle
 
 def accept_connections():
     while True:
-        client, client_address = SERVER.accept()
+        client, client_address = socket.accept()
+        conn = context.wrap_socket(client, server_side=True)
         print("%s:%s has connected." % client_address)
-        client.send(bytes("Welcome to chat! Enter your name.", "utf8"))
-        addresses[client] = client_address
-        Thread(target=handle_client, args=(client,)).start()
+        conn.send(bytes("Welcome to chat! Enter your name.", "utf8"))
+        addresses[conn] = client_address
+        Thread(target=handle_client, args=(conn,)).start()
 
 def handle_client(client):
     name = client.recv(BUFSIZ).decode("utf8")
@@ -47,18 +48,26 @@ clients = {}
 addresses = {}
 names = []
 
-HOST = ''
-PORT = 33000
+ADDR = '127.0.0.1'
+PORT = 8083
 BUFSIZ = 4096
-ADDR = (HOST, PORT)
+CERT = 'server.pem'
+KEY = 'server.pem'
+CERTS_LIST = 'client.pem'
 
-SERVER = socket(AF_INET, SOCK_STREAM)
-SERVER.bind(ADDR)
+socket = socket(AF_INET, SOCK_STREAM)
+socket.bind((ADDR, PORT))
 
 if __name__ == "__main__":
-    SERVER.listen(5)
+    socket.listen(5)
     print("Listening...")
+    
+    context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.load_cert_chain(certfile=CERT, keyfile=KEY)
+    context.load_verify_locations(cafile=CERTS_LIST)
+
     ACCEPT_THREAD = Thread(target=accept_connections)
     ACCEPT_THREAD.start()
     ACCEPT_THREAD.join()
-    SERVER.close()
+    socket.close()
